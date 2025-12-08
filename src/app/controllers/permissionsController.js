@@ -1,16 +1,16 @@
-import {Op} from 'sequelize'
+import { Op } from 'sequelize'
 import { parseISO } from 'date-fns'
 import * as Yup from 'yup'
 import Permission from '../models/Permission.js'
 import Role from '../models/Role.js'
 
-class PermissionsController{
+class PermissionsController {
 
     //Controller para Consultar Rotas no Banco de Dados
-    async index(req,res){
+    async index(req, res) {
 
         // Variáveis que serão utilizadas como parâmetros de consulta no Banco de Dados
-        const{
+        const {
             name,
             status,
             createdBefore,
@@ -25,7 +25,7 @@ class PermissionsController{
         let where = {}
         let order = []
 
-        if(name){
+        if (name) {
             where = {
                 ...where,
                 name: {
@@ -34,70 +34,70 @@ class PermissionsController{
             }
         }
 
-        if(status){
+        if (status) {
             where = {
                 ...where,
                 status: {
-                    
+
                     [Op.iLike]: `${status}%`,
                 }
             }
         }
 
-        if(createdBefore){
+        if (createdBefore) {
             where = {
                 ...where,
                 createdAt: {
                     /* 
                         Como o Data vem como uma String, é necessário convertê-la para um objeto de data, para isso é necessário instalar a biblioteca date-fns
-                     */ 
+                     */
                     [Op.lte]: parseISO(createdBefore),// O operador gte -> great then or equal (maior ou igual)
                 }
             }
         }
 
-        if(createdAfter){
+        if (createdAfter) {
             where = {
                 ...where,
                 createdAt: {
                     /* 
                         Como o Data vem como uma String, é necessário convertê-la para um objeto de data, para isso é necessário instalar a biblioteca date-fns
-                     */ 
+                     */
                     [Op.gte]: parseISO(createdAfter),// O operador gte -> lower then or equal (menor ou igual)
                 }
             }
         }
 
-        if(updatedBefore){
+        if (updatedBefore) {
             where = {
                 ...where,
                 updatedAt: {
                     /* 
                         Como o Data vem como uma String, é necessário convertê-la para um objeto de data, para isso é necessário instalar a biblioteca date-fns
-                     */ 
+                     */
                     [Op.lte]: parseISO(updatedBefore),// O operador gte -> great then or equal (maior ou igual)
                 }
             }
         }
 
-        if(updatedAfter){
+        if (updatedAfter) {
             where = {
                 ...where,
                 updatedAt: {
                     /* 
                         Como o Data vem como uma String, é necessário convertê-la para um objeto de data, para isso é necessário instalar a biblioteca date-fns
-                     */ 
+                     */
                     [Op.gte]: parseISO(updatedBefore),// O operador gte -> lower then or equal (menor ou igual)
                 }
             }
         }
 
         //Campos de ordenação/classificação
-        if(sort){
-            order = sort.split(',').map(item =>item.split(':'))
+        if (sort) {
+            order = sort.split(',').map(item => item.split(':'))
         }
 
-        const permission  = await Permission.findAll({
+        const permission = await Permission.findAll({
             where,
             order,
             limit,
@@ -105,84 +105,79 @@ class PermissionsController{
 
         })
 
-        // Mensagem de Debug - JSON.stringfy -> transforma um objeto em um json
-        console.debug('GET :: /Permission/', JSON.stringify(permission))
-
+        console.debug(`Method: ${req.method} :: URL: ${req.url}`)
         return res.json(permission)
     }
 
     //Controller para Consultar uma permissão pelo id
-    async show(req,res){
+    async show(req, res) {
 
         const id = req.params.id
         const permission = await Permission.findOne({
-            
+
             where:
-            { 
+            {
                 id,
             },
 
-             include: [
+            include: [
                 {
                     model: Role
                 }
             ],
-            
+
         })
 
-        if(!permission){
-            return res.status(404).json({error: 'Permission not found!'})
+        if (!permission) {
+            return res.status(404).json({ error: 'Permission not found!' })
         }
 
-        // Mensagem de Debug - JSON.stringfy -> transforma um objeto em um json
-        console.debug('GET :: /Permission/:id', JSON.stringify( permission))
-
-        return res.json(permission) 
+        console.debug(`Method: ${req.method} :: URL: ${req.url}`)
+        return res.json(permission)
 
 
     }
 
     // Rota para criar um Customer no Banco de Dados
-    async create(req,res){
-        
+    async create(req, res) {
+
         const schema = Yup.object().shape({
             name: Yup.string().required(),
         })
 
-        if(!(await (schema.isValid(req.body)))){
-            return res.status(400).json({error: 'Error on validate Schema!'})
+        if (!(await (schema.isValid(req.body)))) {
+            return res.status(400).json({ error: 'Error on validate Schema!' })
         }
 
         await Permission.create(req.body)
-        console.debug('POST :: /Permission/', JSON.stringify(req.body))
+        console.debug(`Method: ${req.method} :: URL: ${req.url}`)
         return res.status(201).json(req.body)
- 
+
     }
 
     //Rota para alterar o cadastro de Permissões
-    async update(req,res){
-        
+    async update(req, res) {
+
         const schema = Yup.object().shape({
             name: Yup.string(),
             status: Yup.string().uppercase()
         })
 
-        if(!(await (schema.isValid(req.body)))){
-            return res.status(400).json({error: 'Error on validate Schema!'})
+        if (!(await (schema.isValid(req.body)))) {
+            return res.status(400).json({ error: 'Error on validate Schema!' })
         }
 
         const permission = await Permission.findByPk(req.params.id)
 
-        if(!permission){
-            return res.status(404).json({error: 'permission not found!'})
+        if (!permission) {
+            return res.status(404).json({ error: 'permission not found!' })
         }
 
         console.log(permission)
         await permission.update(req.body)
 
-        console.debug('PUT :: /permission/', JSON.stringify(req.body))
-
-        return res.json(permission) 
+        console.debug(`Method: ${req.method} :: URL: ${req.url}`)
+        return res.json(permission)
     }
 
 }

@@ -1,16 +1,16 @@
-import {Op} from 'sequelize'
+import { Op } from 'sequelize'
 import { parseISO } from 'date-fns'
 import * as Yup from 'yup'
 import Role from '../models/Role.js'
 import Permission from '../models/Permission.js'
 
-class RolesController{
+class RolesController {
 
     //Controller para Consultar Rotas no Banco de Dados
-    async index(req,res){
+    async index(req, res) {
 
         // Variáveis que serão utilizadas como parâmetros de consulta no Banco de Dados
-        const{
+        const {
             name,
             status,
             createdBefore,
@@ -25,7 +25,7 @@ class RolesController{
         let where = {}
         let order = []
 
-        if(name){
+        if (name) {
             where = {
                 ...where,
                 name: {
@@ -34,70 +34,70 @@ class RolesController{
             }
         }
 
-        if(status){
+        if (status) {
             where = {
                 ...where,
                 status: {
-                    
+
                     [Op.iLike]: `${status}%`,
                 }
             }
         }
 
-        if(createdBefore){
+        if (createdBefore) {
             where = {
                 ...where,
                 createdAt: {
                     /* 
                         Como o Data vem como uma String, é necessário convertê-la para um objeto de data, para isso é necessário instalar a biblioteca date-fns
-                     */ 
+                     */
                     [Op.lte]: parseISO(createdBefore),// O operador gte -> great then or equal (maior ou igual)
                 }
             }
         }
 
-        if(createdAfter){
+        if (createdAfter) {
             where = {
                 ...where,
                 createdAt: {
                     /* 
                         Como o Data vem como uma String, é necessário convertê-la para um objeto de data, para isso é necessário instalar a biblioteca date-fns
-                     */ 
+                     */
                     [Op.gte]: parseISO(createdAfter),// O operador gte -> lower then or equal (menor ou igual)
                 }
             }
         }
 
-        if(updatedBefore){
+        if (updatedBefore) {
             where = {
                 ...where,
                 updatedAt: {
                     /* 
                         Como o Data vem como uma String, é necessário convertê-la para um objeto de data, para isso é necessário instalar a biblioteca date-fns
-                     */ 
+                     */
                     [Op.lte]: parseISO(updatedBefore),// O operador gte -> great then or equal (maior ou igual)
                 }
             }
         }
 
-        if(updatedAfter){
+        if (updatedAfter) {
             where = {
                 ...where,
                 updatedAt: {
                     /* 
                         Como o Data vem como uma String, é necessário convertê-la para um objeto de data, para isso é necessário instalar a biblioteca date-fns
-                     */ 
+                     */
                     [Op.gte]: parseISO(updatedBefore),// O operador gte -> lower then or equal (menor ou igual)
                 }
             }
         }
 
         //Campos de ordenação/classificação
-        if(sort){
-            order = sort.split(',').map(item =>item.split(':'))
+        if (sort) {
+            order = sort.split(',').map(item => item.split(':'))
         }
 
-        const role  = await Role.findAll({
+        const role = await Role.findAll({
             where,
 
             include: [
@@ -112,19 +112,17 @@ class RolesController{
             offset: limit * page - limit, //Exemplo: 25 * 10 -25 = 225
         })
 
-        // Mensagem de Debug - JSON.stringfy -> transforma um objeto em um json
-        console.debug('GET :: /Role/', JSON.stringify(role))
-
+        console.debug(`Method: ${req.method} :: URL: ${req.url}`)
         return res.json(role)
     }
 
     //Controller para Consultar uma permissão pelo id
-    async show(req,res){
+    async show(req, res) {
 
         const id = req.params.id
         const role = await Role.findOne({
             where:
-            { 
+            {
                 id,
             },
 
@@ -136,59 +134,56 @@ class RolesController{
             ]
         })
 
-        if(!role){
-            return res.status(404).json({error: 'Role not found!'})
+        if (!role) {
+            return res.status(404).json({ error: 'Role not found!' })
         }
 
-        // Mensagem de Debug - JSON.stringfy -> transforma um objeto em um json
-        console.debug('GET :: /Role/:id', JSON.stringify(role))
-
-        return res.json(role) 
+        console.debug(`Method: ${req.method} :: URL: ${req.url}`)
+        return res.json(role)
 
 
     }
 
     // Rota para criar um Customer no Banco de Dados
-    async create(req,res){
-        
+    async create(req, res) {
+
         const schema = Yup.object().shape({
             name: Yup.string().required(),
         })
 
-        if(!(await (schema.isValid(req.body)))){
-            return res.status(400).json({error: 'Error on validate Schema!'})
+        if (!(await (schema.isValid(req.body)))) {
+            return res.status(400).json({ error: 'Error on validate Schema!' })
         }
 
         await Role.create(req.body)
-        console.debug('POST :: /Role/', JSON.stringify(req.body))
+        console.debug(`Method: ${req.method} :: URL: ${req.url}`)
         return res.status(201).json(req.body)
- 
+
     }
 
     //Rota para alterar o cadastro de Permissões
-    async update(req,res){
-        
+    async update(req, res) {
+
         const schema = Yup.object().shape({
             name: Yup.string(),
             status: Yup.string().uppercase()
         })
 
-        if(!(await (schema.isValid(req.body)))){
-            return res.status(400).json({error: 'Error on validate Schema!'})
+        if (!(await (schema.isValid(req.body)))) {
+            return res.status(400).json({ error: 'Error on validate Schema!' })
         }
 
         const role = await Role.findByPk(req.params.id)
 
-        if(!role){
-            return res.status(404).json({error: 'permission not found!'})
+        if (!role) {
+            return res.status(404).json({ error: 'permission not found!' })
         }
 
         console.log(role)
         await role.update(req.body)
 
-        console.debug('PUT :: /roles/', JSON.stringify(req.body))
-
-        return res.json(role) 
+        console.debug(`Method: ${req.method} :: URL: ${req.url}`)
+        return res.json(role)
     }
 
 }

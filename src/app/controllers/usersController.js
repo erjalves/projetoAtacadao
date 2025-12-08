@@ -1,4 +1,4 @@
-import { Op, Sequelize } from 'sequelize'
+import { Op } from 'sequelize'
 import { parseISO } from 'date-fns'
 import * as Yup from 'yup'
 import Branch from '../models/Branch.js'
@@ -8,7 +8,7 @@ import Role from '../models/Role.js'
 import Department from '../models/Department.js'
 import User from '../models/User.js'
 
-class EmployeeController {
+class UserController {
 
     //Controller para Consultar Rotas no Banco de Dados
     async index(req, res) {
@@ -122,6 +122,7 @@ class EmployeeController {
         }
 
         const user = await User.findAll({
+            attributes: {exclude: ['password_hash','employeeId']},
             where,
 
             include: [
@@ -157,6 +158,9 @@ class EmployeeController {
             offset: limit * page - limit, //Exemplo: 25 * 10 -25 = 225
         })
 
+        // Campo disponibilizado pelo Middleware de Autenticação
+        console.log({user_id: req.user_id})
+
         // Mensagem de Debug - JSON.stringfy -> transforma um objeto em um json
         console.debug('GET :: /User/', JSON.stringify(user))
 
@@ -167,7 +171,8 @@ class EmployeeController {
     async show(req, res) {
 
         const id = req.params.id
-        const employee = await Employee.findOne({
+        const user = await User.findOne({
+            attributes: {exclude: ['password_hash','employeeId']},
             where:
             {
                 id,
@@ -175,34 +180,40 @@ class EmployeeController {
 
             include: [
                 {
-                    model: Branch,
+                    model: Employee,
                     attributes: ['name'],
-                },
 
-                {
-                    model: Company,
-                    attributes: ['name'],
-                },
-                {
-                    model: Role,
-                    attributes: ['name'],
-                },
+                    include: [
+                        {
+                            model: Branch
+                        },
 
-                {
-                    model: Department,
-                    attributes: ['name'],
-                }
+                        {
+                            model: Company,
+                            attributes: ['name'],
+                        },
+                        {
+                            model: Role,
+                            attributes: ['name'],
+                        },
+
+                        {
+                            model: Department,
+                            attributes: ['name'],
+                        }
+                    ]
+                },
             ]
         })
 
-        if (!employee) {
-            return res.status(404).json({ error: 'Employee not found!' })
+        if (!user) {
+            return res.status(404).json({ error: 'user not found!' })
         }
 
         // Mensagem de Debug - JSON.stringfy -> transforma um objeto em um json
-        console.debug('GET :: /Employee/:id', JSON.stringify(employee))
+        console.debug('GET :: /User/:id', JSON.stringify(user))
 
-        return res.json(employee)
+        return res.json(user)
 
 
     }
@@ -212,12 +223,15 @@ class EmployeeController {
 
         const schema = Yup.object().shape({
             username: Yup.string().required(),
-            email: Yup.string().required(),
-            password_hash: Yup.string().required(),
+            email: Yup.string().email().required(),
+            password: Yup.string().required().min(8),
             profile_picture: Yup.string().required(),
             phone_number: Yup.string().required(),
             last_login: Yup.date().required(),
             employee_id: Yup.number().required(),
+            password_confimation: Yup.string().when('password',(password,field)=>
+                password ? field.required().oneOf([Yup.ref('password')]) : field
+            ),
         })
 
         if (!(await (schema.isValid(req.body)))) {
@@ -235,33 +249,45 @@ class EmployeeController {
     async update(req, res) {
 
         const schema = Yup.object().shape({
-            registration_number: Yup.string(),
-            name: Yup.string(),
-            company_id: Yup.number(),
-            role_id: Yup.number(),
-            branch_id: Yup.number(),
-            department_id: Yup.number(),
-            status: Yup.string()
+            username: Yup.string(),
+            email: Yup.string().email(),
+            old_password: Yup.string().min(8),
+            password: Yup.string().min(8).when('old_password',(old_password,field) =>
+                old_password ? field.required(): field  
+            ),
+            profile_picture: Yup.string().required(),
+            phone_number: Yup.string().required(),
+            last_login: Yup.date().required(),
+            employee_id: Yup.number().required(),
+            password_confimation: Yup.string().when('password',(password,field)=>
+                password ? field.required().oneOf([Yup.ref('password')]) : field
+            ),
         })
 
         if (!(await (schema.isValid(req.body)))) {
             return res.status(400).json({ error: 'Error on validate Schema!' })
         }
 
-        const employee = await Employee.findByPk(req.params.id)
+        const user = await User.findByPk(req.params.id)
 
-        if (!employee) {
-            return res.status(404).json({ error: 'Employee not found!' })
+        if (!user) {
+            return res.status(404).json({ error: 'User not found!' })
         }
 
-        console.log(employee)
-        await employee.update(req.body)
 
-        console.debug('PUT :: /Employeees/', JSON.stringify(req.body))
+        const {old_password} = req.body
 
-        return res.json(employee)
+        if(old_password && !(await user.checkPasssword(old_password))){
+            return res.status(401).json({message: 'User password not match'})
+        }
+
+        await user.update(req.body)
+
+        console.debug('PUT :: /Users/', JSON.stringify(req.body))
+
+        return res.json(user)
     }
 
 }
 
-export default new EmployeeController()
+export default new UserController()

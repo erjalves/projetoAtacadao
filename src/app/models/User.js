@@ -1,4 +1,5 @@
 import Sequelize, { Model } from 'sequelize'
+import bcrypt from 'bcryptjs'
 
 class User extends Model {
     static init(sequelize) {
@@ -10,6 +11,10 @@ class User extends Model {
                     unique: true
                 },
 
+                password: {
+                    type: Sequelize.VIRTUAL,
+                },
+
                 email: {
                     type: Sequelize.STRING,
                     allowNull: false,
@@ -18,7 +23,6 @@ class User extends Model {
 
                 password_hash: {
                     type: Sequelize.STRING,
-                    allowNull: false,
                 },
 
                 profile_picture: {
@@ -53,7 +57,19 @@ class User extends Model {
                     plural: 'users',
                 }
             }
+
         )
+
+        this.addHook('beforeSave', async user =>{
+            if(user.password){
+                user.password_hash = await bcrypt.hash(user.password,8)
+            }
+         })
+
+    }
+
+    checkPasssword(password){
+        return bcrypt.compare(password,this.password_hash)
     }
 
     static associate(models){

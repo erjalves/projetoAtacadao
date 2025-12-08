@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import session from './app/controllers/SessionsController.js'
 import permission from './app/controllers/permissionsController.js'
 import role from './app/controllers/rolesController.js'
 import permissionRole from './app/controllers/permissionsRolesController.js'
@@ -7,8 +8,14 @@ import branch from './app/controllers/branchsController.js'
 import company from './app/controllers/companiesController.js'
 import employee from './app/controllers/employeesController.js'
 import user from './app/controllers/usersController.js'
+import auth from './app/middlewares/auth.js'
 
 const routes = new Router()
+
+//Sessions
+routes.post('/sessions', session.create)
+
+routes.use(auth)
 
 // Rotas de acesso às permissões
 routes.get('/permissions', permission.index)
