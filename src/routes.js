@@ -9,6 +9,7 @@ import company from './app/controllers/companiesController.js'
 import employee from './app/controllers/employeesController.js'
 import user from './app/controllers/usersController.js'
 import auth from './app/middlewares/auth.js'
+import userValidation from './app/middlewares/checkPermssionUser.js'
 
 const routes = new Router()
 
@@ -16,6 +17,7 @@ const routes = new Router()
 routes.post('/sessions', session.create)
 
 routes.use(auth)
+//routes.use(checkPermission)
 
 // Rotas de acesso às permissões
 routes.get('/permissions', permission.index)
@@ -60,9 +62,9 @@ routes.post('/employees', employee.create)
 routes.put('/employees/:id', employee.update)
 
 //Rotas de Acesso aos Usuários
-routes.get('/users', user.index)
+routes.get('/users', userValidation.searchUser, user.index)
 routes.get('/users/:id', user.show)
-routes.post('/users', user.create)
-routes.put('/users/:id', user.update)
+routes.post('/users', userValidation.createUser, user.create)
+routes.put('/users/:id', userValidation.updateUser, user.update)
 
 export default routes

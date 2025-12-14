@@ -1,4 +1,4 @@
-import { Op } from 'sequelize'
+import { Op, Sequelize } from 'sequelize'
 import { parseISO } from 'date-fns'
 import * as Yup from 'yup'
 import Branch from '../models/Branch.js'
@@ -7,6 +7,8 @@ import Employee from '../models/Employee.js'
 import Role from '../models/Role.js'
 import Department from '../models/Department.js'
 import User from '../models/User.js'
+import Permission from '../models/Permission.js'
+import Session from './SessionsController.js'
 
 class UserController {
 
@@ -122,7 +124,8 @@ class UserController {
         }
 
         const user = await User.findAll({
-            attributes: {exclude: ['password_hash','employeeId']},
+            attributes: { exclude: ['password_hash', 'employeeId'] },
+            //raw: true,
             where,
 
             include: [
@@ -142,6 +145,16 @@ class UserController {
                         {
                             model: Role,
                             attributes: ['name'],
+
+                            include: [
+                                {
+                                    model: Permission,
+                                    attributes: ['name'],
+
+                                    through: { attributes: [] }
+                                },
+
+                            ]
                         },
 
                         {
@@ -159,7 +172,20 @@ class UserController {
         })
 
         // Campo disponibilizado pelo Middleware de Autenticação
-        console.log({user_id: req.user_id})
+        //console.log({user_id: req.user_id})
+
+        //const acesso = await Session.getPermissions(req.user_id)
+        
+        //const teste = acesso.map(item => item.permission)
+
+        //console.log(teste)
+
+        //console.log(permission)
+        //console.log(await Session.getPermissions(req.user_id))
+
+        /* const usuarios = user.map(usuario => usuario.employee.role.permissions.map(p=>p.name))
+
+        console.log(usuarios) */
 
         // Mensagem de Debug - JSON.stringfy -> transforma um objeto em um json
         console.debug('GET :: /User/', JSON.stringify(user))
@@ -172,7 +198,7 @@ class UserController {
 
         const id = req.params.id
         const user = await User.findOne({
-            attributes: {exclude: ['password_hash','employeeId']},
+            attributes: { exclude: ['password_hash', 'employeeId'] },
             where:
             {
                 id,
@@ -195,6 +221,15 @@ class UserController {
                         {
                             model: Role,
                             attributes: ['name'],
+
+                            include: [
+                                {
+                                    model: Permission,
+                                    attributes: ['name'],
+
+                                    through: { attributes: [] }
+                                },
+                            ]
                         },
 
                         {
@@ -215,7 +250,6 @@ class UserController {
 
         return res.json(user)
 
-
     }
 
     // Rota para criar um Customer no Banco de Dados
@@ -229,7 +263,7 @@ class UserController {
             phone_number: Yup.string().required(),
             last_login: Yup.date().required(),
             employee_id: Yup.number().required(),
-            password_confimation: Yup.string().when('password',(password,field)=>
+            password_confimation: Yup.string().when('password', (password, field) =>
                 password ? field.required().oneOf([Yup.ref('password')]) : field
             ),
         })
@@ -252,14 +286,14 @@ class UserController {
             username: Yup.string(),
             email: Yup.string().email(),
             old_password: Yup.string().min(8),
-            password: Yup.string().min(8).when('old_password',(old_password,field) =>
-                old_password ? field.required(): field  
+            password: Yup.string().min(8).when('old_password', (old_password, field) =>
+                old_password ? field.required() : field
             ),
             profile_picture: Yup.string().required(),
             phone_number: Yup.string().required(),
             last_login: Yup.date().required(),
             employee_id: Yup.number().required(),
-            password_confimation: Yup.string().when('password',(password,field)=>
+            password_confimation: Yup.string().when('password', (password, field) =>
                 password ? field.required().oneOf([Yup.ref('password')]) : field
             ),
         })
@@ -275,10 +309,10 @@ class UserController {
         }
 
 
-        const {old_password} = req.body
+        const { old_password } = req.body
 
-        if(old_password && !(await user.checkPasssword(old_password))){
-            return res.status(401).json({message: 'User password not match'})
+        if (old_password && !(await user.checkPasssword(old_password))) {
+            return res.status(401).json({ message: 'User password not match' })
         }
 
         await user.update(req.body)
